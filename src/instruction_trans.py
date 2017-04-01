@@ -33,7 +33,7 @@ def split_op(line_of_instruction,addr_of_instruction = 0):
         else:
             raise InvalidPesudoInst(line_of_instruction)
     elif operation == "li":
-        if len(operand) == 2:
+        if len(operands) == 2:
             try:
                 imme_num = str_to_num(operands[1],32)
             except NumberError as e:
@@ -51,7 +51,7 @@ class InstructionTrans():
     def __init__(self,label_dict = dict()):
         self._symbol_table = label_dict
         self._R_TYPE_DICT = {"add":0x20,"addu":0x21,"sub":0x22,"subu":0x23,"and":0x24,"or":0x25,"xor":0x26,"nor":0x27,"jr":0x8,"jalr":0x9,
-                            "sllv":0x04,"srlv":0x06, "srav":0x07,"slt":0x20,"sltu":0x21,"sll":0x00,"srl":0x02,"sra":0x03}
+                            "sllv":0x04,"srlv":0x06, "srav":0x07,"slt":0x2a,"sltu":0x21,"sll":0x00,"srl":0x02,"sra":0x03}
         self._I_TYPE_DICT = {"addi":0x8,"addiu":0x9,"ori":0xd,"andi":0xc,"xori":0xe,"lui":0xf,"slti":0xa,"sltiu":0xb,"lw":0x23,"lb":0x20,"lbu":0x24,"lh":0x21,"lhu":0x25,
                             "sw":0x2b,"sh":0x29,"sb":0x28,"beq":0x4,"bne":0x5,"bgtz":0x7,"blez":0x6,}#"bltz":,"bltzal","bgez":,"bgezal",}
         self._J_TYPE_DICT = {"jal":0x03,"j":0x02}
@@ -83,8 +83,8 @@ class InstructionTrans():
         func = self._R_TYPE_DICT[operation]
         if func in (0x00,0x02,0x03): #shift
             if len(operands) == 3:
-                rd = 0b00000
-                rs = self._reg_trans(operands[0])
+                rs = 0b00000
+                rd = self._reg_trans(operands[0])
                 rt = self._reg_trans(operands[1])
                 shamt = str_to_num(operands[2], 5)
             elif len(operands) < 3:
@@ -140,8 +140,8 @@ class InstructionTrans():
                     imme = origin_to_complement((self._symbol_table[operands[2]] - current_addr - 4)>>2,16)
                 else:
                     raise InvalidLabel(operands)
-                rt = self._reg_trans(operands[0])
-                rs = self._reg_trans(operands[1])
+                rs = self._reg_trans(operands[0])
+                rt = self._reg_trans(operands[1])
             elif len(operands) < 3:
                 raise TooFewOperands(operation)
             else:
@@ -153,6 +153,7 @@ class InstructionTrans():
                 else:
                     raise InvalidLabel(operands[1])
                 rs = self._reg_trans(operands[0])
+                rt = 0
             elif len(operands) < 2:
                 raise TooFewOperands(operation)
             else:
@@ -168,9 +169,9 @@ class InstructionTrans():
                 raise TooMuchOperands(operation)
         else:
             if len(operands) == 3:   
-                imme = str_to_num(operands[2])
-                rs = self._reg_trans(operands[0])
-                rt = self._reg_trans(operands[1])
+                imme = str_to_num(operands[2],16)
+                rt = self._reg_trans(operands[0])
+                rs = self._reg_trans(operands[1])
             elif len(operands) < 3:
                 raise TooFewOperands(operation)
             else:
@@ -182,14 +183,14 @@ class InstructionTrans():
         opcode = self._J_TYPE_DICT[operation]
         if len(operands) == 1:
             if operands[0] in self._symbol_table:
-                imme = origin_to_complement(self._symbol_table[operands[0]],26)
+                imme = origin_to_complement(self._symbol_table[operands[0]],28)
             else:
                 raise InvalidLabel(operands[0])
         elif len(operands) < 1:
             raise TooFewOperands(operation)
         else:
             raise TooMuchOperands(operation)
-        return (opcode<<26) + imme
+        return (opcode<<26) + (imme>>2)
 
 
     def _reg_trans(self,reg_str):

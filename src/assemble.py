@@ -188,7 +188,7 @@ def pre_parse(file_path):
                     elif segment_type == _CODE_SEGMENT:
                         try:
                             list_of_tuple_inst = split_op(assemble_code,current_addr)
-                        except InvalidPesudoInst as e:
+                        except PesudoInstFault as e:
                             e.add_position_info(line)
                             raise e
                         current_addr += len(list_of_tuple_inst) * 4
