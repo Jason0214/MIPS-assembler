@@ -19,7 +19,13 @@ class Top(tkinter.Tk):
         # variables for file IO
         self._output_file_type = BINARY_FILE
         self._src_file_type = -1
+        self._src_file_name = ""
         self._src_file_path_and_name = ""
+        # add key press
+        self.bind("i",self._beg_edit)
+        self.bind("<Control-b>",self.assemble_or_disassemble)
+        self.bind("<Control-s>",self._save_file)
+        self.bind("<Control-o>",self._open_file)
 
     def create_menu(self):
         # menu bar
@@ -35,15 +41,15 @@ class Top(tkinter.Tk):
         self.menu_bar.add_cascade(label="File", menu=filemenu)
         # edit submenu
         edit_menu = tkinter.Menu(self.menu_bar,tearoff=0)
-        edit_menu.add_command(label="edit", command=self._beg_editting)
+        edit_menu.add_command(label="edit", command=self._beg_edit)
+        edit_menu.add_command(label="exit_edit", command=self._exit_edit)
         self.menu_bar.add_cascade(label="Edit", menu=edit_menu)
         # run submenu
         run_menu = tkinter.Menu(self.menu_bar,tearoff=0)
-        run_menu.add_command(label="assemble", command=self.assemble)
-        run_menu.add_command(label="disassemble", command=self.disassemble)
+        run_menu.add_command(label="assemble/disassemble", command=self.assemble_or_disassemble)
         self.menu_bar.add_cascade(label="Run", menu=run_menu)
 
-    def assemble(self):
+    def assemble_or_disassemble(self, event=None):
         if self._src_file_type == ASM_FILE:
             output_file = generate_output_file_name(self._src_file_path_and_name,self._output_file_type)               
             if self._output_file_type == BINARY_FILE:
@@ -76,8 +82,6 @@ class Top(tkinter.Tk):
                     self.output_text(self._right_box,fp.read())
         else:
             pass
-    def disassemble(self):
-        pass
 
     def add_widgets(self):
         # specify the current opened file
@@ -87,6 +91,9 @@ class Top(tkinter.Tk):
         self._left_box = tkinter.Text(self, width=60, height=30)
         self._left_box.grid(row=1, column=1, rowspan=2, columnspan=3, padx=20)
         self._left_box.configure(state=DISABLED)
+        # bind key press:
+        self._left_box.bind("<KeyRelease>", self._flush_text)
+        self._left_box.bind("<Control-c>", self._exit_edit)
         # text area for results, read only
         self._right_box = tkinter.Text(self, width=40, height=30)
         self._right_box.grid(row=1, column=4, rowspan=2, columnspan=2, padx=20)
@@ -96,6 +103,10 @@ class Top(tkinter.Tk):
         self._console.grid(row =3,column=1,columnspan=5,padx=15,pady=30)
         self.append_text(self._console,"console:\n")
         self._console.configure(state=DISABLED)
+# scorll bar
+        # xsb = tk.Scrollbar(self, orient="horizontal", command=self.text.xview)
+        # ysb = tk.Scrollbar(self, orient="vertical", command=self.text.yview)
+        # self.text.configure(yscrollcommand=ysb.set, xscrollcommand=xsb.set)
 
     def add_buttons(self):
         if self._src_file_type == ASM_FILE:
@@ -123,8 +134,19 @@ class Top(tkinter.Tk):
         text_widget.insert(END,string)
         text_widget.configure(state=DISABLED)
 
-    def _open_file(self):
+    def add_text_tag(self):
+        pass
+
+    def _flush_text(self, event):
+        if self._src_file_name:
+            self._left_label.configure(text=self._src_file_name+"*")
+
+
+
+    def _open_file(self, event=None):
         self._src_file_path_and_name = filedialog.askopenfilename()
+        if not self._src_file_path_and_name:
+            return 
         # split src file name and judge the type of src file
         try:
             self._src_file_type,self._src_file_name = file_name_parse(self._src_file_path_and_name)
@@ -140,11 +162,14 @@ class Top(tkinter.Tk):
         with open(self._src_file_path_and_name,"r") as fp:
             self.output_text(self._left_box,fp.read())
 
-    def _save_file(self):
+    def _save_file(self, event=None):
         pass
-
-    def _beg_editting(self):
+        
+# enter or exit editting mode
+    def _beg_edit(self, event=None):
         self._left_box.configure(state=NORMAL)
+    def _exit_edit(self, event=None):
+        self._left_box.configure(state=DISABLED)
 
     def _bin_button_switch(self):
         self._coe_button.toggle()
