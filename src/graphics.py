@@ -10,9 +10,9 @@ class Top(tkinter.Tk):
         # create window
         tkinter.Tk.__init__(self)
         self.title("MIPS assembler")
-        self.geometry('720x600')
+        self.geometry('800x600')
         self.resizable(width=False,height=False)
-        # self.configure(background="grey")
+        self.configure(background="WhiteSmoke")
         # create menu
         self.create_menu()
         self.add_widgets()
@@ -45,23 +45,35 @@ class Top(tkinter.Tk):
 
     def assemble(self):
         if self._src_file_type == ASM_FILE:
-            output_file = generate_output_file_name(self._src_file_path_and_name,self._output_file_type)
-            # assemble
-            with open(output_file,"wb") as fp:
-                try:
-                    asm_to_bytes(self._src_file_path_and_name,fp)
-                except Error as e:
-                    print(self._src_file_path_and_name+":"+str(e.position)+":0: "+e.bug+": "+e.info)
-            # display the result
-            with open(output_file,"rb") as fp:
-                bin_str = ""
-                while True:
-                    temp = fp.read(4)
-                    if len(temp) == 0:
-                        break
-                    bin_str += int_to_binary(int(binascii.hexlify(temp),16))
-                    bin_str += "\n"
-            self.output_text(self._right_box,bin_str)
+            output_file = generate_output_file_name(self._src_file_path_and_name,self._output_file_type)               
+            if self._output_file_type == BINARY_FILE:
+                # assemble
+                with open(output_file,"wb") as fp:
+                    try:
+                        asm_to_bytes(self._src_file_path_and_name,fp)
+                    except Error as e:
+                        self.append_text(self._console,"[assemble failed: " + e.bug + ": " + e.info +"]\n")
+                        return
+                # display the result
+                with open(output_file,"rb") as fp:
+                    bin_str = ""
+                    while True:
+                        temp = fp.read(4)
+                        if len(temp) == 0:
+                            break
+                        bin_str += int_to_binary(int(binascii.hexlify(temp),16))
+                        bin_str += "\n"
+                self.output_text(self._right_box,bin_str)
+                self.append_text(self._console,"[assemble finished]\n")
+            elif self._output_file_type == COE_FILE:
+                with open(output_file,"w") as fp:
+                    try:
+                        asm_to_coe(self._src_file_path_and_name,fp)
+                    except Error as e:
+                        self.append_text(self._console,"[assemble failed: " + e.bug + ": " + e.info +"]\n")
+                        return 
+                with open(output_file,"r") as fp:
+                    self.output_text(self._right_box,fp.read())
         else:
             pass
     def disassemble(self):
@@ -69,16 +81,21 @@ class Top(tkinter.Tk):
 
     def add_widgets(self):
         # specify the current opened file
-        self._left_label = tkinter.Label(self)
+        self._left_label = tkinter.Label(self,background="WhiteSmoke")
         self._left_label.grid(row=0, column=1,columnspan=3)
         # text area for current opened file, support editting
-        self._left_box = tkinter.Text(self, width=50, height=30)
+        self._left_box = tkinter.Text(self, width=60, height=30)
         self._left_box.grid(row=1, column=1, rowspan=2, columnspan=3, padx=20)
         self._left_box.configure(state=DISABLED)
         # text area for results, read only
-        self._right_box = tkinter.Text(self, width=35, height=30)
+        self._right_box = tkinter.Text(self, width=40, height=30)
         self._right_box.grid(row=1, column=4, rowspan=2, columnspan=2, padx=20)
         self._right_box.configure(state=DISABLED)
+        # console window
+        self._console = tkinter.Text(self,width=106, height=8)
+        self._console.grid(row =3,column=1,columnspan=5,padx=15,pady=30)
+        self.append_text(self._console,"console:\n")
+        self._console.configure(state=DISABLED)
 
     def add_buttons(self):
         if self._src_file_type == ASM_FILE:
@@ -95,17 +112,28 @@ class Top(tkinter.Tk):
             self._asm_button.select()
             self._asm_button.configure(state=DISABLED)
 
+    def append_text(self,text_widget,string):
+        text_widget.configure(state=NORMAL)
+        text_widget.insert(END,string)
+        text_widget.configure(state=DISABLED)      
+
     def output_text(self,text_widget,string):
         text_widget.configure(state=NORMAL)
-        text_widget.selection_clear()
+        text_widget.delete(1.0,END)
         text_widget.insert(END,string)
         text_widget.configure(state=DISABLED)
 
     def _open_file(self):
         self._src_file_path_and_name = filedialog.askopenfilename()
         # split src file name and judge the type of src file
-        self._src_file_type,self._src_file_name = file_name_parse(self._src_file_path_and_name)
+        try:
+            self._src_file_type,self._src_file_name = file_name_parse(self._src_file_path_and_name)
+        except InvalidFilename as e:
+            self.append_text(self._console,"[open failed: "+e.bug+": "+e.info+"]\n")
+            self._src_file_path_and_name = ""
+            return 
         # change corresponding widgets
+        self.append_text(self._console,"[open file: "+self._src_file_path_and_name+"]\n")
         self._left_label.configure(text = self._src_file_name)
         self.add_buttons()
         # output the contain of src file
@@ -116,7 +144,7 @@ class Top(tkinter.Tk):
         pass
 
     def _beg_editting(self):
-        pass
+        self._left_box.configure(state=NORMAL)
 
     def _bin_button_switch(self):
         self._coe_button.toggle()
