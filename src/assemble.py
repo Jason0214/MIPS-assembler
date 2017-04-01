@@ -45,7 +45,6 @@ def asm_to_bytes(asm_file_path,output_file_pointer):
                 current_addr += 4
             output_file_pointer.write(int_to_bytes(result_in_int))
 
-
 def int_to_bytes(result_in_int):
     hex_str = hex(result_in_int)[2:]
     while len(hex_str) < 8:
@@ -53,11 +52,64 @@ def int_to_bytes(result_in_int):
     bytes_result = binascii.unhexlify(hex_str)
     return bytes_result
 
+
+def asm_to_coe(asm_file_path,output_file_pointer):
+    asm_list,label_dict = pre_parse(asm_file_path)
+    instruction_translater = InstructionTrans(label_dict)
+    #constants
+    _DATA_SEGMENT = 2
+    _CODE_SEGMENT = 1
+    _NONE = 0
+    segment_type = _NONE
+    segment_addr = 0
+    current_addr = 0    
+    print("memory_initialization_radix=16;",file=output_file_pointer)
+    print("memory_initialization_vector=",file=output_file_pointer)
+    while len(asm_list) > 0:
+        #line index of current instruction, used for error position
+        line_index = asm_list[0][0]
+        #real asm instruction
+        asm_item = asm_list.pop(0)[1:]
+        #specify the segment type
+        if asm_item[0] in (".text",".data"): 
+            if asm_item[0] == ".text":
+                segment_type = _CODE_SEGMENT
+            else:
+                segment_type = _DATA_SEGMENT
+            segment_addr = asm_item[1]
+            if current_addr > segment_addr:
+                raise SegmentCollision(line_index,segment_addr)
+            # addresses between last segment and current segment all set to zero 
+            for i in range(current_addr,segment_addr):
+                print("00000000",end=",",file=output_file_pointer)
+            current_addr = segment_addr
+        else:
+            if segment_type == _CODE_SEGMENT:
+                try:
+                    result_in_int = instruction_translater.asm_to_bin(asm_item,current_addr)
+                except TranslateError as e:
+                    e.add_position_info(line_index)
+                    raise e
+                current_addr += 4
+            else:
+                result_in_int = asm_item[0]
+                current_addr += 4
+            print(int_to_hex(result_in_int),end="",file=output_file_pointer)
+            if len(asm_list) != 0:
+                print(",",end="",file=output_file_pointer)
+            else:
+                print(";",end="",file=output_file_pointer)
+
 def int_to_binary(result_in_int):
     bin_str = bin(result_in_int)[2:]
     while len(bin_str) < 32:
         bin_str = '0' + bin_str
     return bin_str
+def int_to_hex(result_in_int):
+    hex_str = hex(result_in_int)[2:]
+    while len(hex_str) < 8:
+        hex_str = "0" + hex_str
+    return hex_str
 
 def pre_parse(file_path):
     '''
