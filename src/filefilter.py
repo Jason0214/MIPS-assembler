@@ -13,7 +13,7 @@ def file_name_parse(file_path):
     if dot_index == -1:
         return BINARY_FILE,name
     elif name[dot_index+1:] == "bin":
-        return BINARY_FILE,path,name
+        return BINARY_FILE,name
     elif name[dot_index+1:] == "asm":
         return ASM_FILE,name
     elif name[dot_index+1:] == "coe":
