@@ -1,7 +1,9 @@
 import tkinter
 from tkinter import filedialog
+from tkinter import messagebox
 from tkinter.constants import *
 from assemble import *
+from disassemble import *
 from filefilter import *
 import binascii
 
@@ -16,15 +18,20 @@ class Top(tkinter.Tk):
         # create menu
         self.create_menu()
         self.add_widgets()
+        # some status variables
+        self._is_saved = True
+        self._is_editting = False
         # variables for file IO
         self._output_file_type = BINARY_FILE
-        self._src_file_type = -1
+        self._src_file_type = NONE
         self._src_file_name = ""
         self._src_file_path_and_name = ""
         # add key press
         self.bind("i",self._beg_edit)
-        self.bind("<Control-b>",self.assemble_or_disassemble)
+        self.bind("<Control-b>",self.assemble)
+        self.bind("<Control-d>",self.disassemble)
         self.bind("<Control-s>",self._save_file)
+        self.bind("<Control-c>",self._close_file)
         self.bind("<Control-o>",self._open_file)
 
     def create_menu(self):
@@ -34,7 +41,9 @@ class Top(tkinter.Tk):
         # file submenu
         filemenu = tkinter.Menu(self.menu_bar,tearoff=0)
         filemenu.add_command(label="open", command=self._open_file)
+        filemenu.add_command(label="close",command=self._close_file)
         filemenu.add_command(label="save", command=self._save_file)
+        filemenu.add_command(label="save as",command=self._save_as_file)
         filemenu.add_separator()
         filemenu.add_command(label="exit", command=self.quit)
         # add file to menu bar
@@ -46,10 +55,11 @@ class Top(tkinter.Tk):
         self.menu_bar.add_cascade(label="Edit", menu=edit_menu)
         # run submenu
         run_menu = tkinter.Menu(self.menu_bar,tearoff=0)
-        run_menu.add_command(label="assemble/disassemble", command=self.assemble_or_disassemble)
+        run_menu.add_command(label="assemble", command=self.assemble)
+        run_menu.add_command(label="disassemble",command=self.disassemble)
         self.menu_bar.add_cascade(label="Run", menu=run_menu)
 
-    def assemble_or_disassemble(self, event=None):
+    def assemble(self, event=None):
         if self._src_file_type == ASM_FILE:
             output_file = generate_output_file_name(self._src_file_path_and_name,self._output_file_type)               
             if self._output_file_type == BINARY_FILE:
@@ -80,8 +90,20 @@ class Top(tkinter.Tk):
                         return 
                 with open(output_file,"r") as fp:
                     self.output_text(self._right_box,fp.read())
-        else:
+        else: 
             pass
+
+    def disassemble(self,event=None):
+        if self._src_file_type == BINARY_FILE:
+            output_file = generate_output_file_name(self._src_file_path_and_name,ASM_FILE)
+            with open(output_file,"w") as fp:
+                try:
+                    disassemble(self._src_file_path_and_name,fp)
+                except Error:
+                    self.append_text(self._console,"[assemble failed: " + e.bug + ": " + e.info +"]\n")
+                    return                    
+            with open(output_file,"r") as fp:
+                self.output_text(self._right_box,fp.read())
 
     def add_widgets(self):
         # specify the current opened file
@@ -92,7 +114,7 @@ class Top(tkinter.Tk):
         self._left_box.grid(row=1, column=1, rowspan=2, columnspan=3, padx=20)
         self._left_box.configure(state=DISABLED)
         # bind key press:
-        self._left_box.bind("<KeyRelease>", self._flush_text)
+        self._left_box.bind("<KeyPress>", self._flush_text)
         self._left_box.bind("<Control-c>", self._exit_edit)
         # text area for results, read only
         self._right_box = tkinter.Text(self, width=40, height=30)
@@ -123,6 +145,15 @@ class Top(tkinter.Tk):
             self._asm_button.select()
             self._asm_button.configure(state=DISABLED)
 
+    def remove_buttons(self):
+        if self._src_file_type == NONE:
+            pass
+        elif self._src_file_type == ASM_FILE:
+            self._bin_button.grid_forget()
+            self._coe_button.grid_forget()
+        else:
+            self._asm_button.grid_forget()
+
     def append_text(self,text_widget,string):
         text_widget.configure(state=NORMAL)
         text_widget.insert(END,string)
@@ -134,17 +165,28 @@ class Top(tkinter.Tk):
         text_widget.insert(END,string)
         text_widget.configure(state=DISABLED)
 
-    def add_text_tag(self):
+    def delete_text(self,text_widget):
+        text_widget.configure(state=NORMAL)
+        text_widget.delete(1.0,END)
+        text_widget.configure(state=DISABLED)     
+
+    def add_highlight_tag(self):
         pass
 
     def _flush_text(self, event):
-        if self._src_file_name:
-            self._left_label.configure(text=self._src_file_name+"*")
-
+        # check whether is the "ascii" key
+        if event.char and ord(event.char) < 128 and self._is_editting:
+            # make a judge whether editting file or not
+            if self._src_file_name and self._is_saved:
+                self._is_saved = False
+                self._left_label.configure(text=self._src_file_name+"*")
 
 
     def _open_file(self, event=None):
-        self._src_file_path_and_name = filedialog.askopenfilename()
+        if self._src_file_path_and_name:
+            self._close_file()
+        #start open
+        self._src_file_path_and_name = filedialog.askopenfilename(filetypes=[("asm file",".asm"),("binary file",".bin"), ('all files', '.*')])
         if not self._src_file_path_and_name:
             return 
         # split src file name and judge the type of src file
@@ -159,16 +201,61 @@ class Top(tkinter.Tk):
         self._left_label.configure(text = self._src_file_name)
         self.add_buttons()
         # output the contain of src file
-        with open(self._src_file_path_and_name,"r") as fp:
-            self.output_text(self._left_box,fp.read())
+        if self._src_file_type == ASM_FILE:
+            with open(self._src_file_path_and_name,"r") as fp:
+                self.output_text(self._left_box,fp.read())
+        elif self._src_file_type == BINARY_FILE:
+            with open(self._src_file_path_and_name,"rb") as fp:
+                bin_str = ""
+                while True:
+                    temp = fp.read(4)
+                    if len(temp) == 0:
+                        break
+                    bin_str += int_to_binary(int(binascii.hexlify(temp),16))
+                    bin_str += "\n"
+            self.output_text(self._left_box,bin_str)
+
+    def _close_file(self,event=None):
+        if not self._is_saved:
+            var = messagebox.askquestion("","You haven't save yet, sure to close?")
+            if var == "no":
+                return
+        # clear button and text
+        self._left_label.configure(text="")
+        self.delete_text(self._left_box)
+        self.delete_text(self._right_box)
+        self._output_file_type = BINARY_FILE
+        self.remove_buttons()
+        # console info
+        self.append_text(self._console,"[close file: "+self._src_file_path_and_name+"]\n")
+        # clear file info
+        self._src_file_type = NONE
+        self._src_file_name = ""
+        self._src_file_path_and_name = ""
+
 
     def _save_file(self, event=None):
-        pass
-        
+        if not self._src_file_path_and_name:
+            self._save_as_file()
+        elif not self._is_saved:
+            with open(self._src_file_path_and_name,"w") as f:
+                f.write(self._left_box.get(1.0,END))
+            self.append_text(self._console,"[save file: "+self._src_file_path_and_name+"]\n")
+
+    def _save_as_file(self, event=None):
+        save_as_file_path = ""
+        sava_as_file_path = filedialog.asksaveasfilename(filetypes=[("asm file",".asm"),("binary file",".bin"), ('all files', '.*')])
+        if sava_as_file_path:
+            #FIXME
+            with open(save_as_file_path,"w") as f:
+                f.write(self._left_box.get(1.0,END))
+            
 # enter or exit editting mode
     def _beg_edit(self, event=None):
+        self._is_editting = True
         self._left_box.configure(state=NORMAL)
     def _exit_edit(self, event=None):
+        self._is_editting = False
         self._left_box.configure(state=DISABLED)
 
     def _bin_button_switch(self):

@@ -1,5 +1,6 @@
 from error import *
 
+NONE = -1
 BINARY_FILE = 0
 COE_FILE = 1
 ASM_FILE = 2
@@ -28,7 +29,7 @@ def generate_output_file_name(src_file_name,src_file_type):
         return name_without_ext + ".bin"
     if src_file_type == COE_FILE:
         return name_without_ext + ".coe"
-    if src_file_name == ASM_FILE:
+    if src_file_type == ASM_FILE:
         return name_without_ext + ".asm"
 
     

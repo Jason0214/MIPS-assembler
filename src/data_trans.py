@@ -89,7 +89,12 @@ class DataTrans():
                     dd_list.append(int(value_in_st,16))
                 except ValueError:
                     raise InvalidDataFormat(x)
-            else:
+            elif len(x) == 8:
+                try:
+                    dd_list.append(int(x,16))
+                except ValueError:
+                    raise InvalidDataFormat(x)
+            else:   
                 raise InvalidDataFormat(x)
         return self._merge(dd_list,1)
 

@@ -7,12 +7,19 @@ class DebugError(Error):
 
 class AssembleError(Error):
     pass
+class DisassembleError(Error):
+    pass
 
 class PreParseError(AssembleError):
     pass 
 
 class TranslateError(AssembleError):
     pass
+
+class InvalidFileFormat(DisassembleError):
+    def __init__(self,filename):
+        self.bug = filename
+        self.info = "file format is not correct for disassembling"
 
 class InvalidFilename(AssembleError):
     def __init__(self,filename):

@@ -91,7 +91,7 @@ class InstructionTrans():
                 raise TooFewOperands(operation)
             else:
                 raise TooMuchOperands(operation)
-        elif func in (0x8,0x9):
+        elif func in (0x8,0x9): #jr
             if len(operands) == 1:
                 rd = 0b00000
                 rs = self._reg_trans(operands[0])
