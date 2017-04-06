@@ -2,10 +2,69 @@ import tkinter
 from tkinter import filedialog
 from tkinter import messagebox
 from tkinter.constants import *
+import binascii
+import re
 from assemble import *
 from disassemble import *
 from filefilter import *
-import binascii
+
+
+class CustomText(tkinter.Text):
+    '''A text widget with a new method, highlight_pattern()
+
+    example:
+
+    text = CustomText()
+    text.tag_configure("red", foreground="#ff0000")
+    text.highlight_pattern("this should be red", "red")
+
+    The highlight_pattern method is a simplified python
+    version of the tcl code at http://wiki.tcl.tk/3246
+    '''
+    def __init__(self, *args, **kwargs):
+        tkinter.Text.__init__(self, *args, **kwargs)
+        self._add_highlight_tag()
+
+    def highlight_text(self, beg = "1.0", end = END):
+        for key,value in self.pattern_dict.items():
+            self.tag_remove(key, beg, end)
+            self._highlight_pattern(tag=key,pattern=value,start=beg,end=end)
+
+    def _highlight_pattern(self, pattern, tag, start="1.0", end="end",
+                          regexp=True):
+        '''Apply the given tag to all text that matches the given pattern
+
+        If 'regexp' is set to True, pattern will be treated as a regular
+        expression according to Tcl's regular expression syntax.
+        '''
+
+        start = self.index(start)
+        end = self.index(end)
+        self.mark_set("matchStart", start)
+        self.mark_set("matchEnd", start)
+        self.mark_set("searchLimit", end)
+
+        count = tkinter.IntVar()
+        while True:
+            index = self.search(pattern, "matchEnd","searchLimit", count=count, regexp=regexp)
+            if index == "": break
+            if count.get() == 0: break # degenerate pattern which matches zero-length strings
+            self.mark_set("matchStart", index)
+            self.mark_set("matchEnd", "%s+%sc" % (index, count.get()))
+            self.tag_add(tag, "matchStart", "matchEnd")
+
+    def _add_highlight_tag(self):
+        self.pattern_dict = {}
+        self.pattern_dict["segment"] = "\\.(data|text):"
+        self.tag_config("segment",foreground="red")
+        self.pattern_dict["num"] = "(\\-)?(0x[0-9A-Fa-f]*)|(0b[01]*)|(\d[0-9]*)"
+        self.tag_config("num", foreground="green")
+        self.pattern_dict["reg"] = "\\$(((3[01])|([12]?[0-9])|[0-9])|zero|at|v[01]|a[0-3]|s[0-7]|t[0-9]|k[01]|gp|sp|fp|ra)"
+        self.tag_config("reg",foreground="purple")
+        self.pattern_dict["instruction"] = "(add|addu|addi|addiu|sub|subu|and|andi|or|not|ori|nor|xor|xori|slt|sltu|slti|sltiu|sll|sllv|rol|srl|sra|srlv|ror|j|jr|jal|beq|bne|lw|sw|lui|move|mfhi|mflo|mthi|mtlo)"
+        self.tag_config("instruction",foreground="blue")
+        self.pattern_dict["comments"] = "(#|//).*$"
+        self.tag_config("comments",foreground="grey")
 
 class Top(tkinter.Tk):
     def __init__(self):
@@ -97,27 +156,29 @@ class Top(tkinter.Tk):
         if self._src_file_type == BINARY_FILE:
             output_file = generate_output_file_name(self._src_file_path_and_name,ASM_FILE)
             with open(output_file,"w") as fp:
+                print(".text: 0000", file=fp)
                 try:
                     disassemble(self._src_file_path_and_name,fp)
                 except Error:
-                    self.append_text(self._console,"[assemble failed: " + e.bug + ": " + e.info +"]\n")
+                    self.append_text(self._console,"[disassemble failed: " + e.bug + ": " + e.info +"]\n")
                     return                    
             with open(output_file,"r") as fp:
                 self.output_text(self._right_box,fp.read())
+                self._right_box.highlight_text()
 
     def add_widgets(self):
         # specify the current opened file
         self._left_label = tkinter.Label(self,background="WhiteSmoke")
         self._left_label.grid(row=0, column=1,columnspan=3)
         # text area for current opened file, support editting
-        self._left_box = tkinter.Text(self, width=60, height=30)
+        self._left_box = CustomText(self, width=60, height=30)
         self._left_box.grid(row=1, column=1, rowspan=2, columnspan=3, padx=20)
         self._left_box.configure(state=DISABLED)
         # bind key press:
         self._left_box.bind("<KeyPress>", self._flush_text)
         self._left_box.bind("<Control-c>", self._exit_edit)
         # text area for results, read only
-        self._right_box = tkinter.Text(self, width=40, height=30)
+        self._right_box = CustomText(self, width=40, height=30)
         self._right_box.grid(row=1, column=4, rowspan=2, columnspan=2, padx=20)
         self._right_box.configure(state=DISABLED)
         # console window
@@ -170,9 +231,6 @@ class Top(tkinter.Tk):
         text_widget.delete(1.0,END)
         text_widget.configure(state=DISABLED)     
 
-    def add_highlight_tag(self):
-        pass
-
     def _flush_text(self, event):
         # check whether is the "ascii" key
         if event.char and ord(event.char) < 128 and self._is_editting:
@@ -180,6 +238,9 @@ class Top(tkinter.Tk):
             if self._src_file_name and self._is_saved:
                 self._is_saved = False
                 self._left_label.configure(text=self._src_file_name+"*")
+            cursor_position = self._left_box.index(INSERT).split(".")
+            line_index = int(cursor_position[0],10)
+            self._left_box.highlight_text(beg=str(line_index)+".0",end=str(line_index+1)+".0")
 
 
     def _open_file(self, event=None):
@@ -204,6 +265,7 @@ class Top(tkinter.Tk):
         if self._src_file_type == ASM_FILE:
             with open(self._src_file_path_and_name,"r") as fp:
                 self.output_text(self._left_box,fp.read())
+            self._left_box.highlight_text()
         elif self._src_file_type == BINARY_FILE:
             with open(self._src_file_path_and_name,"rb") as fp:
                 bin_str = ""
@@ -243,13 +305,9 @@ class Top(tkinter.Tk):
             self.append_text(self._console,"[save file: "+self._src_file_path_and_name+"]\n")
 
     def _save_as_file(self, event=None):
-        save_as_file_path = ""
-        sava_as_file_path = filedialog.asksaveasfilename(filetypes=[("asm file",".asm"),("binary file",".bin"), ('all files', '.*')])
-        if sava_as_file_path:
-            #FIXME
-            with open(save_as_file_path,"w") as f:
-                f.write(self._left_box.get(1.0,END))
-            
+        with filedialog.asksaveasfile(mode = "w", filetypes=[("asm file",".asm"),("binary file",".bin"), ('all files', '.*')]) as f:
+            f.write(self._left_box.get(1.0,END))
+
 # enter or exit editting mode
     def _beg_edit(self, event=None):
         self._is_editting = True
