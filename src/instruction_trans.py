@@ -139,7 +139,10 @@ class InstructionTrans():
                 if operands[2] in self._symbol_table:
                     imme = origin_to_complement((self._symbol_table[operands[2]] - current_addr - 4)>>2,16)
                 else:
-                    raise InvalidLabel(operands)
+                    try:
+                        imme = origin_to_complement(int(operands[2],16)>>2,16)
+                    except (ValueError,NumberError):
+                        raise InvalidLabel(operands[2])
                 rs = self._reg_trans(operands[0])
                 rt = self._reg_trans(operands[1])
             elif len(operands) < 3:
@@ -149,9 +152,12 @@ class InstructionTrans():
         elif opcode in (0x6,0x7): #bgtz gltz
             if len(operands) == 2:
                 if operands[1] in self._symbol_table:
-                    imme = origin_to_complement((self._symbol_table[operands[1]] - current_addr - 4)>>2,16)
+                    imme = origin_to_complement((self._symbol_table[operands[1]] - current_addr - 4)>>2,16)   
                 else:
-                    raise InvalidLabel(operands[1])
+                    try:
+                        imme = origin_to_complement(int(operands[2],16)>>2,16)
+                    except (ValueError,NumberError):
+                        raise InvalidLabel(operands[2])
                 rs = self._reg_trans(operands[0])
                 rt = 0
             elif len(operands) < 2:
@@ -183,9 +189,13 @@ class InstructionTrans():
         opcode = self._J_TYPE_DICT[operation]
         if len(operands) == 1:
             if operands[0] in self._symbol_table:
-                imme = origin_to_complement(self._symbol_table[operands[0]],28)
+                # 32 bit unsigned number 
+                imme = origin_to_complement(self._symbol_table[operands[0]],33)
             else:
-                raise InvalidLabel(operands[0])
+                try:
+                    imme = origin_to_complement(int(operands[0],16),33)
+                except (ValueError,NumberError):
+                    raise InvalidLabel(operands[0])
         elif len(operands) < 1:
             raise TooFewOperands(operation)
         else:
@@ -204,17 +214,14 @@ class InstructionTrans():
             if reg_name in self._REG_DICT:
                 return self._REG_DICT[reg_name]
             else:
-                raise IncorrectRegName(reg_str)
-        elif reg_str[0] == "r":
-            try:
-                reg_index = int(reg_str[1:],10)
-            except ValueError:
-                raise IncorrectRegName(reg_str)
-            if reg_index < 0 or reg_index > 31:
-                raise IncorrectRegName(reg_str)
-        else:
-            raise IncorrectRegName(reg_str)
-
+                try:
+                    reg_index = int(reg_str[1:],10)
+                except ValueError:
+                    raise IncorrectRegName(reg_str)
+                if reg_index < 0 or reg_index > 31:
+                    raise IncorrectRegName(reg_str)
+                return reg_index
+                
 if __name__ == "__main__":
     instruction_translater = InstructionTrans()
     asm_string = input("input a line of assemble instruction: ")

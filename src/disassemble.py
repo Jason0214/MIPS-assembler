@@ -54,13 +54,13 @@ class Binary_Trans:
             rd = self._REG_DICT[rd]
             if func in (0x0,0x2,0x3):
                 rt = self._REG_DICT[rt]
-                return operation+" "+rd+" "+rt+" "+hex(shamt)
+                return operation+" "+rd+", "+rt+", "+hex(shamt)
             elif func in (0x8,0x9):
                 return operation+" "+rd
             else:
                 rt = self._REG_DICT[rt]
                 rs = self._REG_DICT[rs]
-                return operation+" "+rd+" "+rs+" "+rt
+                return operation+" "+rd+", "+rs+", "+rt
         except KeyError:
             return ".dword "+int_to_hex(bin_num)
 
@@ -79,20 +79,20 @@ class Binary_Trans:
             rs = self._REG_DICT[rs]
             if opcode in (0x23,0x20,0x24,0x21,0x25,0x2b,0x28,0x29):
                 rt = self._REG_DICT[rt]            
-                return operation+" "+rt+" "+str(imme)+"("+rs+")"
-            elif opcode in (0x4,0x5):
+                return operation+" "+rt+", "+str(imme)+"("+rs+")"
+            elif opcode in (0x4,0x5):# branch
                 rt = self._REG_DICT[rt]
-                return operation+" "+rt+" "+rs+" "+hex(imme)
-            elif opcode in (0x6,0x7):
-                return operation+" "+rs+" "+hex(imme)
+                return operation+" "+rt+", "+rs+", "+hex(imme << 2)
+            elif opcode in (0x6,0x7):# branch
+                return operation+" "+rs+", "+hex(imme << 2)
             else:
                 rt = self._REG_DICT[rt]
-                return operation+" "+rt+" "+rs+" "+hex(imme)
+                return operation+" "+rt+", "+rs+", "+hex(imme)
         except KeyError:
             return ".dword "+int_to_hex(bin_num)
 
 
-    def _j_type_trans(self,opcode,bin_num):        
+    def _j_type_trans(self,opcode,bin_num):
         operation = self._J_TYPE_INST[opcode]
         target = bin_num - (bin_num >> 26 << 26)
         return operation +" "+hex(target)
