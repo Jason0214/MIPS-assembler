@@ -137,7 +137,7 @@ class DataTrans():
             if x[0] in ("'",'"') and x[0] == x[-1]:
                 s = x[1:-1]
                 for bytes_ in s:
-                    db_list.append(ord(s[index]))
+                    db_list.append(ord(bytes_))
             elif x[:2] == "0x":
                 if len(value_in_st) != 4:
                     raise InvalidDataFormat(x)
