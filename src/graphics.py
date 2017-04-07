@@ -86,7 +86,7 @@ class Top(tkinter.Tk):
         self._src_file_name = ""
         self._src_file_path_and_name = ""
         # add key press
-        self.bind("i",self._beg_edit)
+        self.bind("<Control-e>",self._edit_mode_switch)
         self.bind("<Control-b>",self.assemble)
         self.bind("<Control-d>",self.disassemble)
         self.bind("<Control-s>",self._save_file)
@@ -109,8 +109,8 @@ class Top(tkinter.Tk):
         self.menu_bar.add_cascade(label="File", menu=filemenu)
         # edit submenu
         edit_menu = tkinter.Menu(self.menu_bar,tearoff=0)
-        edit_menu.add_command(label="edit", command=self._beg_edit)
-        edit_menu.add_command(label="exit_edit", command=self._exit_edit)
+        edit_menu.add_command(label="enter edit", command=self._beg_edit)
+        edit_menu.add_command(label="exit edit", command=self._exit_edit)
         self.menu_bar.add_cascade(label="Edit", menu=edit_menu)
         # run submenu
         run_menu = tkinter.Menu(self.menu_bar,tearoff=0)
@@ -175,7 +175,7 @@ class Top(tkinter.Tk):
         self._left_box.grid(row=1, column=1, rowspan=2, columnspan=3, padx=20)
         self._left_box.configure(state=DISABLED)
         # bind key press:
-        self._left_box.bind("<KeyPress>", self._flush_text)
+        self._left_box.bind("<KeyRelease>", self._flush_text)
         self._left_box.bind("<Control-c>", self._exit_edit)
         # text area for results, read only
         self._right_box = CustomText(self, width=40, height=30)
@@ -232,8 +232,8 @@ class Top(tkinter.Tk):
         text_widget.configure(state=DISABLED)     
 
     def _flush_text(self, event):
-        # check whether is the "ascii" key
-        if event.char and ord(event.char) < 128 and self._is_editting:
+        # check whether is the "ascii" key or 'BackSpace'
+        if self._is_editting and ((event.char and ord(event.char) < 128) or event.keysym == "BackSpace"):
             # make a judge whether editting file or not
             if self._src_file_name and self._is_saved:
                 self._is_saved = False
@@ -309,12 +309,19 @@ class Top(tkinter.Tk):
             f.write(self._left_box.get(1.0,END))
 
 # enter or exit editting mode
-    def _beg_edit(self, event=None):
+    def _beg_edit(self):
         self._is_editting = True
         self._left_box.configure(state=NORMAL)
-    def _exit_edit(self, event=None):
+    def _exit_edit(self):
         self._is_editting = False
         self._left_box.configure(state=DISABLED)
+    def _edit_mode_switch(self, event=None):
+        if(self._is_editting):
+            self._is_editting = False
+            self._left_box.configure(state=DISABLED)
+        else:
+            self._is_editting = True
+            self._left_box.configure(state=NORMAL)
 
     def _bin_button_switch(self):
         self._coe_button.toggle()
