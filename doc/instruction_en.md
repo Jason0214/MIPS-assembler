@@ -7,7 +7,7 @@
     pass the file(.bin) througn argv
 
 ``` bash 
-$ python3 console.py <your_binary_file_path>
+> python console.py <your_binary_file_path>
 ```
 
 ###### make use of sublime
@@ -26,13 +26,23 @@ $ python3 console.py <your_binary_file_path>
 
 ### Graphic Interface (graphics.py)
 
+###### Packup
+    the provided source code must run within a python environment. if you are
+    willing to you can also freeze it to a ".exe" executable file
+
+    simply run:
+```bash
+> python setup.py build 
+```
+
+
 ###### Shortcuts
 - open file    <ctrl-o\>
 - close file   <ctrl-c\>
 - save file    <ctrl-s\>
-- start edit   <i\>
 - assemble     <ctrl-b\>
 - disassemble  <ctrl-d\>
+- switch edit mode  <ctrl-e\>
 
 ###### Menu
 - File
@@ -41,7 +51,7 @@ $ python3 console.py <your_binary_file_path>
     3. save: save the change you made to current file, if no opened file call "save as"
     4. save as: save as a new file
 - Edit
-    1. edit: start editting, since you can't change the opened file by default
+    1. enter_edit: start editting, since you can't change the opened file by default
     2. exit_edit: exit editting mode
 - Run
     1. assemble: if a ".asm" file is opened, it will be assembled
