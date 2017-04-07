@@ -9,28 +9,20 @@ try:
 except ImportError:
     if platform.system() == "Windows":
         s = subprocess.Popen("pip install cx_Freeze")
-        s.kill()
-    elif platform.system() == "Linux":
-        s = subprocess.Popen("pip3 install cx_Freeze",shell=True)
-        s.kill()
-# get python dir
-python_path = sys.executable
-python_dir = python_path[:python_path.rfind(os.sep)]
+        s.wait()
 
 # get own module
-datadir = os.path.dirname(__file__) + os.sep + "src"
+datadir = "." + os.sep + "src"
 sys.path.append(datadir)
 
 if platform.system() == "Windows":
+    # get python dir
+    python_path = sys.executable
+    python_dir = python_path[:python_path.rfind(os.sep)]
     os.environ['TCL_LIBRARY'] = python_dir + "\\tcl\\tcl8.6"
     os.environ['TK_LIBRARY'] = python_dir + "\\tcl\\tk8.6"
     include_files = [python_dir + "\\DLLs\\tcl86t.dll", python_dir + "\\DLLs\\tk86t.dll"]
     execute_base = "Win32GUI"
-elif platforms.system() == "Linux":
-    os.environ['TCL_LIBRARY'] = python_dir + "/tcl/tcl8.6"
-    os.environ['TK_LIBRARY'] = python_dir + "/tcl/tk8.6"
-    include_files = [python_dir + "/DLLs/tcl86t.dll", python_dir + "/DLLs/tk86t.dll"]
-    execute_base = None
 
 setup(
     name = "MIPS assembler",
