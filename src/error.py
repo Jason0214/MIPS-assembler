@@ -14,7 +14,7 @@ class PreParseError(AssembleError):
     pass 
 
 class TranslateError(AssembleError):
-    pass
+    pass    
 
 class InvalidFileFormat(DisassembleError):
     def __init__(self,filename):
@@ -62,7 +62,7 @@ class InvalidDataFormat(PreParseError):
     def add_position_info(self,p_info):
         self.position = p_info
 
-class NumberError(TranslateError):
+class NumberError(TranslateError,DisassembleError):
     def __init__(self,num_st):
         super().__init__()
         self.info = "incorrect number format or number exceed 16 bits"
@@ -109,10 +109,15 @@ class TooFewOperands(TranslateError):
         self.bug = operation
     def add_position_info(self,p_info):
         self.position = p_info
-
-
-
-
+class PlaceLabelError(DisassembleError):
+    def __init__(self,addr):
+        super().__init__()
+        self.info = "jumped to invalid address"
+        self.bug = addr
+        self.position = ""
+    def add_position_info(self,p_info):
+        self.position = p_info
+        
 
 class InvaidDataToWritten(DebugError):
     def __init__(self,problem_addr):

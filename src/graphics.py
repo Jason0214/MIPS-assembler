@@ -127,7 +127,7 @@ class Top(tkinter.Tk):
                     try:
                         asm_to_bytes(self._src_file_path_and_name,fp)
                     except Error as e:
-                        self.append_text(self._console,"[assemble failed: " + e.bug + ": " + e.info +"]\n")
+                        self._error_display(e)
                         return
                 # display the result
                 with open(output_file,"rb") as fp:
@@ -145,23 +145,21 @@ class Top(tkinter.Tk):
                     try:
                         asm_to_coe(self._src_file_path_and_name,fp)
                     except Error as e:
-                        self.append_text(self._console,"[assemble failed: " + e.bug + ": " + e.info +"]\n")
+                        self._error_display(e)
                         return 
                 with open(output_file,"r") as fp:
                     self.output_text(self._right_box,fp.read())
-        else: 
-            pass
 
     def disassemble(self,event=None):
         if self._src_file_type == BINARY_FILE:
             output_file = generate_output_file_name(self._src_file_path_and_name,ASM_FILE)
-            with open(output_file,"w") as fp:
-                print(".text: 0000", file=fp)
-                try:
-                    disassemble(self._src_file_path_and_name,fp)
-                except Error:
-                    self.append_text(self._console,"[disassemble failed: " + e.bug + ": " + e.info +"]\n")
-                    return                    
+            translater = Disassembler()
+            translater.load(self._src_file_path_and_name,output_file)
+            try:
+                translater.run()
+            except Error as e:
+                self._error_display(e)
+                return                      
             with open(output_file,"r") as fp:
                 self.output_text(self._right_box,fp.read())
                 self._right_box.highlight_text()
@@ -242,12 +240,11 @@ class Top(tkinter.Tk):
             line_index = int(cursor_position[0],10)
             self._left_box.highlight_text(beg=str(line_index)+".0",end=str(line_index+1)+".0")
 
-
     def _open_file(self, event=None):
         if self._src_file_path_and_name:
             self._close_file()
         #start open
-        self._src_file_path_and_name = filedialog.askopenfilename(filetypes=[("asm file",".asm"),("binary file",".bin"), ('all files', '.*')])
+        self._src_file_path_and_name = filedialog.askopenfilename(filetypes=[('all files', '.*')])
         if not self._src_file_path_and_name:
             return 
         # split src file name and judge the type of src file
@@ -276,6 +273,9 @@ class Top(tkinter.Tk):
                     bin_str += int_to_binary(int(binascii.hexlify(temp),16))
                     bin_str += "\n"
             self.output_text(self._left_box,bin_str)
+            
+    def _error_display(self,error):
+        self.append_text(self._console,"[assemble failed: " + error.bug + ": " + error.info +"]\n")              
 
     def _close_file(self,event=None):
         if not self._is_saved:
@@ -302,11 +302,19 @@ class Top(tkinter.Tk):
         elif not self._is_saved:
             with open(self._src_file_path_and_name,"w") as f:
                 f.write(self._left_box.get(1.0,END))
+            self._left_label.configure(text=self._src_file_name)
+            self._is_saved = True
             self.append_text(self._console,"[save file: "+self._src_file_path_and_name+"]\n")
 
     def _save_as_file(self, event=None):
-        with filedialog.asksaveasfile(mode = "w", filetypes=[("asm file",".asm"),("binary file",".bin"), ('all files', '.*')]) as f:
-            f.write(self._left_box.get(1.0,END))
+        try:
+            with filedialog.asksaveasfile(mode = "w", filetypes=[('all files', '.*')]) as f:
+                f.write(self._left_box.get(1.0,END))
+        except AttributeError:
+            return
+        self._is_saved = True
+        self._left_label.configure(text=self._src_file_name)
+        self.append_text(self._console,"[save file: successfully]\n")
 
 # enter or exit editting mode
     def _beg_edit(self):

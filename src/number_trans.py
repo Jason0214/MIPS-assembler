@@ -21,6 +21,15 @@ def origin_to_complement(num,max_bits):
         raise NumberError(num)
     return num
 
+def complement_to_origin(num,max_bits):
+    if num > (1 << max_bits):
+        raise NumberError(num)
+    if num < (1 << (max_bits-1)): # positive
+        return num
+    else: #negative
+        return num - (1 << max_bits)
+
+
 def int_to_binary(result_in_int):
     bin_str = bin(result_in_int)[2:]
     while len(bin_str) < 32:

@@ -2,21 +2,7 @@ from error import *
 from number_trans import *
 
 
-def disassemble(src_file_name,output_file_pointer):
-    translater = Binary_Trans()
-    temp_bytes = b''
-    with open(src_file_name,"rb") as fp:
-        while True:
-            try:
-                temp_bytes = fp.read(4)
-            except Exception:
-                raise InvaidFileFormat(src_file_name)
-            # end of the file
-            if not temp_bytes:
-                break
-            output_file_pointer.write(translater.bin_to_asm(temp_bytes)+"\n")
-
-class Binary_Trans:
+class Disassembler:
     def __init__(self):
         self._REG_DICT = {0:"$zero",1:"$at",2:"$v0",3:"$v1",4:"$a0",5:"$a1",6:"$a2",7:"$a3",8:"$t0",9:"$t1",10:"$t2",11:"$t3",12:"$t4",13:"$t5",14:"$t6",15:"$t7",
                           16:"$s0",17:"$s1",18:"$s2",19:"$s3",20:"$s4",21:"$s5",22:"$s6",23:"$s7",24:"$t8",25:"$t9",26:"$k0",27:"$k1",28:"$gp",29:"$sp",30:"$fp",31:"$ra"}
@@ -25,6 +11,40 @@ class Binary_Trans:
         self._I_TYPE_INST = {0x8:"addi",0x9:"addiu",0xd:"ori",0xc:"andi",0xe:"xori",0xf:"lui",0xa:"slti",0xb:"sltiu",0x23:"lw",0x20:"lb",0x24:"lbu",0x21:"lh",0x25:"lhu",
                             0x2b:"sw",0x29:"sh",0x28:"sb",0x4:"beq",0x5:"bne",0x7:"bgtz",0x6:"blez"}
         self._J_TYPE_INST = {0x3:"jal",0x2:"j"}
+        self.src_file_name = ""
+        self.output_file_name = ""
+        self.label_dict = dict()
+        self.instruction_list = []
+
+    def load(self,src_file_name, output_file_name):
+        self.output_file_name = output_file_name
+        self.src_file_name = src_file_name
+
+    def run(self):
+        temp_bytes = b''
+        self.instruction_list.clear()
+        self.label_dict.clear()
+        with open(self.src_file_name,"rb") as fp:
+            while True:
+                try:
+                    temp_bytes = fp.read(4)
+                except Exception:
+                    raise InvaidFileFormat(src_file_name)
+                # end of the file
+                if not temp_bytes:
+                    break
+                self.instruction_list.append(self.bin_to_asm(temp_bytes)+"\n")
+        # add label
+        for addr,label in self.label_dict.items():
+            try:
+                self.instruction_list[addr] = label+":\n"+self.instruction_list[addr]
+            except IndexError:
+                raise PlaceLabelError(str(addr))
+        with open(self.output_file_name,"w") as fp:
+            print(".text: 0000", file=fp)
+            for x in self.instruction_list:
+                fp.write(x)
+
     def bin_to_asm(self,bytes_obj):
         binary_num = int.from_bytes(bytes_obj,"big")
         opcode = binary_num >> 26
@@ -56,7 +76,8 @@ class Binary_Trans:
                 rt = self._REG_DICT[rt]
                 return operation+" "+rd+", "+rt+", "+hex(shamt)
             elif func in (0x8,0x9):
-                return operation+" "+rd
+                rs = self._REG_DICT[rs]
+                return operation+" "+rs
             else:
                 rt = self._REG_DICT[rt]
                 rs = self._REG_DICT[rs]
@@ -82,24 +103,41 @@ class Binary_Trans:
                 return operation+" "+rt+", "+str(imme)+"("+rs+")"
             elif opcode in (0x4,0x5):# branch
                 rt = self._REG_DICT[rt]
-                return operation+" "+rt+", "+rs+", "+hex(imme << 2)
+                try: 
+                    branch_addr = complement_to_origin(imme,16)+len(self.instruction_list)+1
+                except NumberError as e:
+                    e.add_position_info(len(self.instruction_list))
+                    raise e
+                return operation+" "+rt+", "+rs+", "+self._get_label(branch_addr)
             elif opcode in (0x6,0x7):# branch
-                return operation+" "+rs+", "+hex(imme << 2)
+                try: 
+                    branch_addr = complement_to_origin(imme,16)+len(self.instruction_list)+1
+                except NumberError as e:
+                    e.add_position_info(len(self.instruction_list))
+                    raise e                
+                return operation+" "+rs+", "+self._get_label(branch_addr)
             else:
                 rt = self._REG_DICT[rt]
                 return operation+" "+rt+", "+rs+", "+hex(imme)
         except KeyError:
             return ".dword "+int_to_hex(bin_num)
 
-
     def _j_type_trans(self,opcode,bin_num):
         operation = self._J_TYPE_INST[opcode]
-        target = bin_num - (bin_num >> 26 << 26)
-        return operation +" "+hex(target)
+        jump_to = bin_num - (bin_num >> 26 << 26)
+        if len(self.instruction_list) < (1 << 26):
+            return operation +" "+self._get_label(jump_to)
+        else:
+            return operation+ " "+self._get_label(jump_to + (len(self.instruction_list)>>26<<26))
+
+    def _get_label(self,addr):
+        if addr not in self.label_dict:
+            self.label_dict[addr] = "Label "+str(len(self.label_dict)+1)
+        return self.label_dict[addr]
 
 
 if __name__ == "__main__":
     import binascii
-    translater = Binary_Trans()
+    translater = Disassembler()
     byte = binascii.unhexlify(input("hex string: "))
     print(translater.bin_to_asm(byte))
