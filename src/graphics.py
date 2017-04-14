@@ -151,10 +151,10 @@ class Top(tkinter.Tk):
                     self.output_text(self._right_box,fp.read())
 
     def disassemble(self,event=None):
-        if self._src_file_type == BINARY_FILE:
+        if self._src_file_type == BINARY_FILE or self._src_file_type == COE_FILE:
             output_file = generate_output_file_name(self._src_file_path_and_name,ASM_FILE)
             translater = Disassembler()
-            translater.load(self._src_file_path_and_name,output_file)
+            translater.load(self._src_file_path_and_name,output_file,self._src_file_type)
             try:
                 translater.run()
             except Error as e:
@@ -163,6 +163,7 @@ class Top(tkinter.Tk):
             with open(output_file,"r") as fp:
                 self.output_text(self._right_box,fp.read())
                 self._right_box.highlight_text()
+            self.append_text(self._console,"[disassemble finished]\n")
 
     def add_widgets(self):
         # specify the current opened file
@@ -216,8 +217,8 @@ class Top(tkinter.Tk):
     def append_text(self,text_widget,string):
         text_widget.configure(state=NORMAL)
         text_widget.insert(END,string)
-        text_widget.configure(state=DISABLED)      
-
+        text_widget.configure(state=DISABLED)
+        
     def output_text(self,text_widget,string):
         text_widget.configure(state=NORMAL)
         text_widget.delete(1.0,END)
@@ -231,7 +232,7 @@ class Top(tkinter.Tk):
 
     def _flush_text(self, event):
         # check whether is the "ascii" key or 'BackSpace'
-        if self._is_editting and ((event.char and ord(event.char) < 128) or event.keysym == "BackSpace"):
+        if self._src_file_type == ASM_FILE and self._is_editting and ((event.char and ord(event.char) < 128) or event.keysym == "BackSpace"):
             # make a judge whether editting file or not
             if self._src_file_name and self._is_saved:
                 self._is_saved = False
@@ -263,6 +264,9 @@ class Top(tkinter.Tk):
             with open(self._src_file_path_and_name,"r") as fp:
                 self.output_text(self._left_box,fp.read())
             self._left_box.highlight_text()
+        elif self._src_file_type == COE_FILE:
+            with open(self._src_file_path_and_name,"r") as fp:
+                self.output_text(self._left_box,fp.read())
         elif self._src_file_type == BINARY_FILE:
             with open(self._src_file_path_and_name,"rb") as fp:
                 bin_str = ""

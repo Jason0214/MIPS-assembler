@@ -1,5 +1,6 @@
 from error import *
 from number_trans import *
+from filefilter import *
 
 
 class Disassembler:
@@ -16,24 +17,36 @@ class Disassembler:
         self.label_dict = dict()
         self.instruction_list = []
 
-    def load(self,src_file_name, output_file_name):
+    def load(self,src_file_name, output_file_name,src_file_type):
         self.output_file_name = output_file_name
         self.src_file_name = src_file_name
+        self.src_file_type = src_file_type
 
     def run(self):
         temp_bytes = b''
         self.instruction_list.clear()
         self.label_dict.clear()
-        with open(self.src_file_name,"rb") as fp:
-            while True:
-                try:
-                    temp_bytes = fp.read(4)
-                except Exception:
-                    raise InvaidFileFormat(src_file_name)
-                # end of the file
-                if not temp_bytes:
-                    break
-                self.instruction_list.append(self.bin_to_asm(temp_bytes)+"\n")
+        if self.src_file_type == BINARY_FILE:
+            with open(self.src_file_name,"rb") as fp:
+                while True:
+                    try:
+                        temp_bytes = fp.read(4)
+                    except Exception:
+                        raise InvaidFileFormat(src_file_name)
+                    # end of the file
+                    if not temp_bytes:
+                        break
+                    self.instruction_list.append(self.bin_to_asm(int.from_bytes(temp_bytes,"big"))+"\n")
+        elif self.src_file_type == COE_FILE:
+            with open(self.src_file_name,"r") as fp:
+                content_in_str = fp.read();
+            content_beg = content_in_str.find("memory_initialization_vector=")+len("memory_initialization_vector=")
+            content_in_str = content_in_str[content_beg:]
+            content_end = content_in_str.find(";")
+            content_in_str = content_in_str[:content_end]
+            binary_str_list = content_in_str.split(",")
+            for x in binary_str_list:
+                self.instruction_list.append(self.bin_to_asm(int(x.strip(),16))+"\n")         
         # add label
         for addr,label in self.label_dict.items():
             try:
@@ -45,17 +58,16 @@ class Disassembler:
             for x in self.instruction_list:
                 fp.write(x)
 
-    def bin_to_asm(self,bytes_obj):
-        binary_num = int.from_bytes(bytes_obj,"big")
-        opcode = binary_num >> 26
+    def bin_to_asm(self,binary_str):
+        opcode = binary_str >> 26
         if opcode == 0:
-            return self._r_type_trans(binary_num)
+            return self._r_type_trans(binary_str)
         elif opcode in self._I_TYPE_INST:
-            return self._i_type_trans(opcode, binary_num)
+            return self._i_type_trans(opcode, binary_str)
         elif opcode in self._J_TYPE_INST:
-            return self._j_type_trans(opcode, binary_num)
+            return self._j_type_trans(opcode, binary_str)
         else:
-            return ".dword "+int_to_hex(binary_num)
+            return ".dword "+int_to_hex(binary_str)
 
     def _r_type_trans(self, bin_num):
         bin_num_cut_from_func = bin_num >> 6
