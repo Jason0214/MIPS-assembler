@@ -110,11 +110,10 @@ class Disassembler:
         operation = self._I_TYPE_INST[opcode]
         try:
             rs = self._REG_DICT[rs]
+            rt = self._REG_DICT[rt]                                       
             if opcode in (0x23,0x20,0x24,0x21,0x25,0x2b,0x28,0x29):
-                rt = self._REG_DICT[rt]            
                 return operation+" "+rt+", "+str(imme)+"("+rs+")"
             elif opcode in (0x4,0x5):# branch
-                rt = self._REG_DICT[rt]
                 try: 
                     branch_addr = complement_to_origin(imme,16)+len(self.instruction_list)+1
                 except NumberError as e:
@@ -128,8 +127,9 @@ class Disassembler:
                     e.add_position_info(len(self.instruction_list))
                     raise e                
                 return operation+" "+rs+", "+self._get_label(branch_addr)
+            elif opcode == 0xf: #lui
+                return operation+" "+rt+", "+hex(imme)
             else:
-                rt = self._REG_DICT[rt]
                 return operation+" "+rt+", "+rs+", "+hex(imme)
         except KeyError:
             return ".dword "+int_to_hex(bin_num)
