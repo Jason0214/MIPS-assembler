@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 class Error(Exception):
     def __init__(self):
         Exception.__init__(self)

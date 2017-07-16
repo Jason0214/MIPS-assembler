@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from error import *
 from number_trans import *
 from filefilter import *
@@ -26,7 +27,7 @@ class Disassembler:
         temp_bytes = b''
         self.instruction_list.clear()
         self.label_dict.clear()
-        if self.src_file_type == BINARY_FILE:
+        if self.src_file_type == "BINARY_FILE":
             with open(self.src_file_name,"rb") as fp:
                 while True:
                     try:
@@ -37,7 +38,7 @@ class Disassembler:
                     if not temp_bytes:
                         break
                     self.instruction_list.append(self.bin_to_asm(int.from_bytes(temp_bytes,"big"))+"\n")
-        elif self.src_file_type == COE_FILE:
+        elif self.src_file_type == "COE_FILE":
             with open(self.src_file_name,"r") as fp:
                 content_in_str = fp.read();
             content_beg = content_in_str.find("memory_initialization_vector=")+len("memory_initialization_vector=")

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from error import *
 from instruction_trans import *
 from data_trans import *
@@ -6,11 +7,8 @@ def asm_to_bytes(asm_file_path,output_file_pointer):
     asm_list,label_dict = pre_parse(asm_file_path)
     # init the instruction translater
     instruction_translater = InstructionTrans(label_dict)
-    #constants
-    _DATA_SEGMENT = 2
-    _CODE_SEGMENT = 1
-    _NONE = 0
-    segment_type = _NONE
+
+    segment_type = None
     segment_addr = 0
     current_addr = 0
     while len(asm_list) > 0:
@@ -21,9 +19,9 @@ def asm_to_bytes(asm_file_path,output_file_pointer):
         #specify the segment type
         if asm_item[0] in (".text",".data"): 
             if asm_item[0] == ".text":
-                segment_type = _CODE_SEGMENT
+                segment_type = "CODE_SEGMENT"
             else:
-                segment_type = _DATA_SEGMENT
+                segment_type = "DATA_SEGMENT"
             segment_addr = asm_item[1]
             if current_addr > segment_addr:
                 raise SegmentCollision(line_index,segment_addr)
@@ -32,7 +30,7 @@ def asm_to_bytes(asm_file_path,output_file_pointer):
                 output_file_pointer.write(b"\x00\x00\x00\x00")
             current_addr = segment_addr
         else:
-            if segment_type == _CODE_SEGMENT:
+            if segment_type == "CODE_SEGMENT":
                 try:
                     result_in_int = instruction_translater.asm_to_bin(asm_item,current_addr)
                 except TranslateError as e:
@@ -47,11 +45,8 @@ def asm_to_bytes(asm_file_path,output_file_pointer):
 def asm_to_coe(asm_file_path,output_file_pointer):
     asm_list,label_dict = pre_parse(asm_file_path)
     instruction_translater = InstructionTrans(label_dict)
-    #constants
-    _DATA_SEGMENT = 2
-    _CODE_SEGMENT = 1
-    _NONE = 0
-    segment_type = _NONE
+
+    segment_type = None
     segment_addr = 0
     current_addr = 0   
     print("memory_initialization_radix=16;",file=output_file_pointer)
@@ -66,9 +61,9 @@ def asm_to_coe(asm_file_path,output_file_pointer):
         #specify the segment type
         if asm_item[0] in (".text",".data"): 
             if asm_item[0] == ".text":
-                segment_type = _CODE_SEGMENT
+                segment_type = "CODE_SEGMENT"
             else:
-                segment_type = _DATA_SEGMENT
+                segment_type = "DATA_SEGMENT"
             segment_addr = asm_item[1]
             if current_addr > segment_addr:
                 raise SegmentCollision(line_index,segment_addr)
@@ -77,7 +72,7 @@ def asm_to_coe(asm_file_path,output_file_pointer):
                 print("00000000",end=",",file=output_file_pointer)
             current_addr = segment_addr
         else:
-            if segment_type == _CODE_SEGMENT:
+            if segment_type == "CODE_SEGMENT":
                 try:
                     result_in_int = instruction_translater.asm_to_bin(asm_item,current_addr)
                 except TranslateError as e:
@@ -108,12 +103,8 @@ def pre_parse(file_path):
     data_translater = DataTrans()
     assemble_container = []
     label_dict = {}
-    #constants 
-    _DATA_SEGMENT = 2
-    _CODE_SEGMENT = 1
-    _NONE = 0
     # variable point to the segment.instruction
-    segment_type = _NONE
+    segment_type = None
     current_addr = 0
     line_index = 0
     with open(file_path,"r") as fp:
@@ -139,9 +130,9 @@ def pre_parse(file_path):
                         # statement at the begining of a segment
                         current_addr = int(assemble_code,16)
                         if label == ".data":
-                            segment_type = _DATA_SEGMENT
+                            segment_type = "DATA_SEGMENT"
                         else:
-                            segment_type = _CODE_SEGMENT
+                            segment_type = "CODE_SEGMENT"
                         # still insert into container to be further read
                         # but instruction do not take memeory space
                         assemble_container.append((line_index,label,current_addr))
@@ -160,7 +151,7 @@ def pre_parse(file_path):
                     # insert assemble code to the container
                     # with every insertion, increase 'current_addr' 
                     # the size of the return list
-                    if segment_type == _DATA_SEGMENT:
+                    if segment_type == "DATA_SEGMENT":
                         try:
                             list_of_data = data_translater.asm_to_bin(assemble_code)
                         except InvalidDataFormat as e:
@@ -169,7 +160,7 @@ def pre_parse(file_path):
                         current_addr += len(list_of_data) * 4
                         for x in list_of_data:
                             assemble_container.append((line_index, x))
-                    elif segment_type == _CODE_SEGMENT:
+                    elif segment_type == "CODE_SEGMENT":
                         try:
                             list_of_tuple_inst = split_op(assemble_code,current_addr)
                         except PesudoInstFault as e:

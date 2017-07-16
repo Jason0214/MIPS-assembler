@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import tkinter
 from tkinter import filedialog
 from tkinter import messagebox
@@ -81,8 +82,8 @@ class Top(tkinter.Tk):
         self._is_saved = True
         self._is_editting = False
         # variables for file IO
-        self._output_file_type = BINARY_FILE
-        self._src_file_type = NONE
+        self._output_file_type = "BINARY_FILE"
+        self._src_file_type = None
         self._src_file_name = ""
         self._src_file_path_and_name = ""
         # add key press
@@ -119,9 +120,9 @@ class Top(tkinter.Tk):
         self.menu_bar.add_cascade(label="Run", menu=run_menu)
 
     def assemble(self, event=None):
-        if self._src_file_type == ASM_FILE:
+        if self._src_file_type == "ASM_FILE":
             output_file = generate_output_file_name(self._src_file_path_and_name,self._output_file_type)               
-            if self._output_file_type == BINARY_FILE:
+            if self._output_file_type == "BINARY_FILE":
                 # assemble
                 with open(output_file,"wb") as fp:
                     try:
@@ -140,7 +141,7 @@ class Top(tkinter.Tk):
                         bin_str += "\n"
                 self.output_text(self._right_box,bin_str)
                 self.append_text(self._console,"[assemble finished]\n")
-            elif self._output_file_type == COE_FILE:
+            elif self._output_file_type == "COE_FILE":
                 with open(output_file,"w") as fp:
                     try:
                         asm_to_coe(self._src_file_path_and_name,fp)
@@ -151,8 +152,8 @@ class Top(tkinter.Tk):
                     self.output_text(self._right_box,fp.read())
 
     def disassemble(self,event=None):
-        if self._src_file_type == BINARY_FILE or self._src_file_type == COE_FILE:
-            output_file = generate_output_file_name(self._src_file_path_and_name,ASM_FILE)
+        if self._src_file_type == "BINARY_FILE" or self._src_file_type == "COE_FILE":
+            output_file = generate_output_file_name(self._src_file_path_and_name,"ASM_FILE")
             translater = Disassembler()
             translater.load(self._src_file_path_and_name,output_file,self._src_file_type)
             try:
@@ -191,7 +192,7 @@ class Top(tkinter.Tk):
         # self.text.configure(yscrollcommand=ysb.set, xscrollcommand=xsb.set)
 
     def add_buttons(self):
-        if self._src_file_type == ASM_FILE:
+        if self._src_file_type == "ASM_FILE":
             # check buttons for selecting type of output file
             self._bin_button = tkinter.Checkbutton(self,text='.bin',command=self._bin_button_switch)
             self._bin_button.grid(row=0,column=4)
@@ -206,9 +207,9 @@ class Top(tkinter.Tk):
             self._asm_button.configure(state=DISABLED)
 
     def remove_buttons(self):
-        if self._src_file_type == NONE:
+        if self._src_file_type == "":
             pass
-        elif self._src_file_type == ASM_FILE:
+        elif self._src_file_type == "ASM_FILE":
             self._bin_button.grid_forget()
             self._coe_button.grid_forget()
         else:
@@ -232,7 +233,7 @@ class Top(tkinter.Tk):
 
     def _flush_text(self, event):
         # check whether is the "ascii" key or 'BackSpace'
-        if self._src_file_type == ASM_FILE and self._is_editting and ((event.char and ord(event.char) < 128) or event.keysym == "BackSpace"):
+        if self._src_file_type == "ASM_FILE" and self._is_editting and ((event.char and ord(event.char) < 128) or event.keysym == "BackSpace"):
             # make a judge whether editting file or not
             if self._src_file_name and self._is_saved:
                 self._is_saved = False
@@ -260,14 +261,14 @@ class Top(tkinter.Tk):
         self._left_label.configure(text = self._src_file_name)
         self.add_buttons()
         # output the contain of src file
-        if self._src_file_type == ASM_FILE:
+        if self._src_file_type == "ASM_FILE":
             with open(self._src_file_path_and_name,"r") as fp:
                 self.output_text(self._left_box,fp.read())
             self._left_box.highlight_text()
-        elif self._src_file_type == COE_FILE:
+        elif self._src_file_type == "COE_FILE":
             with open(self._src_file_path_and_name,"r") as fp:
                 self.output_text(self._left_box,fp.read())
-        elif self._src_file_type == BINARY_FILE:
+        elif self._src_file_type == "BINARY_FILE":
             with open(self._src_file_path_and_name,"rb") as fp:
                 bin_str = ""
                 while True:
@@ -290,12 +291,12 @@ class Top(tkinter.Tk):
         self._left_label.configure(text="")
         self.delete_text(self._left_box)
         self.delete_text(self._right_box)
-        self._output_file_type = BINARY_FILE
+        self._output_file_type = "BINARY_FILE"
         self.remove_buttons()
         # console info
         self.append_text(self._console,"[close file: "+self._src_file_path_and_name+"]\n")
         # clear file info
-        self._src_file_type = NONE
+        self._src_file_type = None
         self._src_file_name = ""
         self._src_file_path_and_name = ""
 
@@ -337,17 +338,17 @@ class Top(tkinter.Tk):
 
     def _bin_button_switch(self):
         self._coe_button.toggle()
-        if self._output_file_type == BINARY_FILE:
-            self._output_file_type = COE_FILE
+        if self._output_file_type == "BINARY_FILE":
+            self._output_file_type = "COE_FILE"
         else:
-            self._output_file_type = BINARY_FILE
+            self._output_file_type = "BINARY_FILE"
 
     def _coe_button_switch(self):
         self._bin_button.toggle()
-        if self._output_file_type == BINARY_FILE:
-            self._output_file_type = COE_FILE
+        if self._output_file_type == "BINARY_FILE":
+            self._output_file_type = "COE_FILE"
         else:
-            self._output_file_type = BINARY_FILE
+            self._output_file_type = "BINARY_FILE"
 
     def run(self):
         self.mainloop()

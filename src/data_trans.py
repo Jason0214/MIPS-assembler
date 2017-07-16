@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from error import *
 from number_trans import *
 
